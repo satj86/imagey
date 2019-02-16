@@ -72,17 +72,13 @@ namespace ImageFunctions
         }
 
         [FunctionName("Thumbnail")]
-        public static async Task Run(
-            [EventGridTrigger]EventGridEvent eventGridEvent,
-            [Blob("{data.url}", FileAccess.Read)] Stream input,
-            ILogger log)
+        public static async Task Run(Stream input, string name, ILogger log)
         {
             try
             {
                 if (input != null)
                 {
-                    var createdEvent = ((JObject)eventGridEvent.Data).ToObject<StorageBlobCreatedEventData>();
-                    var extension = Path.GetExtension(createdEvent.Url);
+                    var extension = Path.GetExtension("jpg");
                     var encoder = GetEncoder(extension);
 
                     if (encoder != null)
@@ -91,9 +87,8 @@ namespace ImageFunctions
                         var thumbContainerName = Environment.GetEnvironmentVariable("THUMBNAIL_CONTAINER_NAME");
                         var storageAccount = CloudStorageAccount.Parse(BLOB_STORAGE_CONNECTION_STRING);
                         var blobClient = storageAccount.CreateCloudBlobClient();
-                        var container = blobClient.GetContainerReference(thumbContainerName);
-                        var blobName = GetBlobNameFromUrl(createdEvent.Url);
-                        var blockBlob = container.GetBlockBlobReference(blobName);
+                        var container = blobClient.GetContainerReference(thumbContainerName);;
+                        var blockBlob = container.GetBlockBlobReference(name);
 
                         using (var output = new MemoryStream())
                         using (Image<Rgba32> image = Image.Load(input))
@@ -109,7 +104,7 @@ namespace ImageFunctions
                     }
                     else
                     {
-                        log.LogInformation($"No encoder support for: {createdEvent.Url}");
+                        log.LogInformation($"No encoder support");
                     }
                 }
             }
